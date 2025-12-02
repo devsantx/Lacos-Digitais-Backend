@@ -4,10 +4,12 @@ const router = express.Router();
 const authRoutes = require("./auth.routes");
 const articlesRoutes = require("./articles.routes");
 const quizzesRoutes = require("./quizzes.routes");
+const progressRoutes = require("./progress.routes"); // ← ADICIONAR ESTA LINHA
 
 router.use("/auth", authRoutes);
 router.use("/articles", articlesRoutes);
 router.use("/quizzes", quizzesRoutes);
+router.use("/", progressRoutes); // ← ADICIONAR ESTA LINHA
 
 router.get("/test", (req, res) => {
   res.json({
@@ -18,6 +20,7 @@ router.get("/test", (req, res) => {
       auth: "/api/auth",
       articles: "/api/articles",
       quizzes: "/api/quizzes",
+      progress: "/api/diary-entries, /api/goals, /api/user-achievements",
     },
   });
 });
