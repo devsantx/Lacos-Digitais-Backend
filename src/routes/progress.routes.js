@@ -334,6 +334,7 @@ async function checkAndUnlockAchievements(userId) {
           });
           unlockedAchievements.push(achievement);
           console.log(`🏆 Conquista desbloqueada: ${achievement.name}`);
+          api;
         }
       }
 

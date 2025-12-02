@@ -1,5 +1,3 @@
-// src/config/database.js
-
 require("dotenv").config();
 const { Sequelize } = require("sequelize");
 
@@ -27,12 +25,12 @@ if (process.env.DATABASE_URL) {
   sequelize
     .authenticate()
     .then(() => console.log("✅ Conexão com PostgreSQL estabelecida!"))
-    .catch((err) =>
-      console.log("⚠️  Banco não conectado (ok para testes):", err.message)
-    );
+    .catch((err) => console.log("⚠️  Erro ao conectar no banco:", err.message));
 } else {
-  console.log("⚠️  DATABASE_URL não configurada - funcionando sem banco");
-  sequelize = null;
+  console.log(
+    "⚠️  DATABASE_URL não configurada — CRIANDO sequelize local SQLITE para evitar erros"
+  );
+  sequelize = new Sequelize("sqlite::memory:", { logging: false });
 }
 
 module.exports = { sequelize };
