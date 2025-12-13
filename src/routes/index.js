@@ -1,26 +1,37 @@
+// src/routes/index.js
 const express = require("express");
 const router = express.Router();
 
-const authRoutes = require("./auth.routes");
+// Importar todas as rotas
+const authRoutes = require("./authRoutes");
+const institutionalRoutes = require("./institutionalRoutes");
 const articlesRoutes = require("./articles.routes");
 const quizzesRoutes = require("./quizzes.routes");
-const progressRoutes = require("./progress.routes"); // ← ADICIONAR ESTA LINHA
+const progressRoutes = require("./progress.routes");
 
+// Montar rotas
 router.use("/auth", authRoutes);
+router.use("/institutional", institutionalRoutes);
 router.use("/articles", articlesRoutes);
 router.use("/quizzes", quizzesRoutes);
-router.use("/", progressRoutes); // ← ADICIONAR ESTA LINHA
+router.use("/", progressRoutes); // Progresso fica na raiz do /api
 
+// Rota de teste para verificar se a API está funcionando
 router.get("/test", (req, res) => {
   res.json({
     success: true,
     message: "API funcionando corretamente!",
     timestamp: new Date().toISOString(),
-    routes: {
+    rotas: {
       auth: "/api/auth",
+      institutional: "/api/institutional",
       articles: "/api/articles",
       quizzes: "/api/quizzes",
-      progress: "/api/diary-entries, /api/goals, /api/user-achievements",
+      progress: {
+        diary: "/api/diary-entries",
+        goals: "/api/goals",
+        achievements: "/api/user-achievements",
+      },
     },
   });
 });

@@ -1,19 +1,14 @@
+// controllers/authController.js
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const AnonymousUser = require("../models/AnonymousUser");
+const { AnonymousUser } = require("../models");
 
 class AuthController {
   async register(req, res) {
     try {
-      if (!AnonymousUser) {
-        return res.status(503).json({
-          success: false,
-          error: "Banco de dados não configurado",
-        });
-      }
-
       const { username, password } = req.body;
 
+      // Validação
       if (!username || !password) {
         return res.status(400).json({
           success: false,
@@ -35,6 +30,7 @@ class AuthController {
         });
       }
 
+      // Verificar se usuário já existe
       const existingUser = await AnonymousUser.findOne({
         where: { username },
       });
@@ -46,13 +42,16 @@ class AuthController {
         });
       }
 
+      // Hash da senha
       const password_hash = await bcrypt.hash(password, 10);
 
+      // Criar usuário
       const user = await AnonymousUser.create({
         username,
         password_hash,
       });
 
+      // Gerar token JWT
       const token = jwt.sign(
         {
           id: user.id,
@@ -70,6 +69,7 @@ class AuthController {
         user: {
           id: user.id,
           username: user.username,
+          createdAt: user.created_at,
         },
       });
     } catch (error) {
@@ -77,19 +77,14 @@ class AuthController {
       res.status(500).json({
         success: false,
         error: "Erro ao criar conta",
+        details:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   }
 
   async login(req, res) {
     try {
-      if (!AnonymousUser) {
-        return res.status(503).json({
-          success: false,
-          error: "Banco de dados não configurado",
-        });
-      }
-
       const { username, password } = req.body;
 
       if (!username || !password) {
@@ -99,6 +94,7 @@ class AuthController {
         });
       }
 
+      // Buscar usuário
       const user = await AnonymousUser.findOne({
         where: { username },
       });
@@ -110,6 +106,7 @@ class AuthController {
         });
       }
 
+      // Verificar senha
       const validPassword = await bcrypt.compare(password, user.password_hash);
 
       if (!validPassword) {
@@ -119,8 +116,10 @@ class AuthController {
         });
       }
 
+      // Atualizar último login
       await user.update({ last_login: new Date() });
 
+      // Gerar token JWT
       const token = jwt.sign(
         {
           id: user.id,
@@ -138,6 +137,7 @@ class AuthController {
         user: {
           id: user.id,
           username: user.username,
+          lastLogin: user.last_login,
         },
       });
     } catch (error) {
@@ -145,17 +145,29 @@ class AuthController {
       res.status(500).json({
         success: false,
         error: "Erro ao fazer login",
+        details:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   }
 
   async verifyToken(req, res) {
     try {
+      // Buscar usuário atualizado
+      const user = await AnonymousUser.findByPk(req.userId);
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          error: "Usuário não encontrado",
+        });
+      }
+
       res.json({
         success: true,
         user: {
-          id: req.userId,
-          username: req.username,
+          id: user.id,
+          username: user.username,
           type: req.userType,
         },
       });
@@ -164,6 +176,38 @@ class AuthController {
       res.status(500).json({
         success: false,
         error: "Erro ao verificar token",
+      });
+    }
+  }
+
+  async getProfile(req, res) {
+    try {
+      const user = await AnonymousUser.findByPk(req.userId, {
+        attributes: ["id", "username", "created_at", "last_login", "is_active"],
+      });
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          error: "Usuário não encontrado",
+        });
+      }
+
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          username: user.username,
+          createdAt: user.created_at,
+          lastLogin: user.last_login,
+          isActive: user.is_active,
+        },
+      });
+    } catch (error) {
+      console.error("❌ Erro ao buscar perfil:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erro ao buscar perfil",
       });
     }
   }

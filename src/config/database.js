@@ -1,13 +1,20 @@
+// src/config/database.js
 require("dotenv").config();
 const { Sequelize } = require("sequelize");
+const path = require("path");
 
-// Conexão Sequelize para models
+console.log("🔧 Configurando conexão com o banco de dados...");
+
 let sequelize;
 
-if (process.env.DATABASE_URL) {
+try {
+  if (!process.env.DATABASE_URL) {
+    throw new Error("DATABASE_URL não está configurada no arquivo .env");
+  }
+
   sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: "postgres",
-    logging: false,
+    logging: process.env.NODE_ENV === "development" ? console.log : false,
     pool: {
       max: 5,
       min: 0,
@@ -22,15 +29,11 @@ if (process.env.DATABASE_URL) {
     },
   });
 
-  sequelize
-    .authenticate()
-    .then(() => console.log("✅ Conexão com PostgreSQL estabelecida!"))
-    .catch((err) => console.log("⚠️  Erro ao conectar no banco:", err.message));
-} else {
-  console.log(
-    "⚠️  DATABASE_URL não configurada — CRIANDO sequelize local SQLITE para evitar erros"
-  );
-  sequelize = new Sequelize("sqlite::memory:", { logging: false });
+  console.log("✅ Sequelize configurado com sucesso");
+} catch (error) {
+  console.error("❌ Erro ao configurar Sequelize:", error.message);
+  console.log("⚠️  Continuando sem banco de dados...");
+  sequelize = null;
 }
 
 module.exports = { sequelize };
