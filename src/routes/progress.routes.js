@@ -1,71 +1,11 @@
+// src/routes/progress.routes.js
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middlewares/auth");
 
-const DiaryEntry = require("../models/DiaryEntry");
+// REMOVA os imports de DiaryEntry, etc. se não for usar aqui
 const UserAchievement = require("../models/UserAchievement");
 const Achievement = require("../models/Achievement");
-
-/**
- * ============================================================
- * DIÁRIO – Criar entrada
- * ============================================================
- */
-router.post("/diary-entries", authMiddleware, async (req, res) => {
-  try {
-    const { date, time_online, mood, triggers, activities } = req.body;
-    const userId = req.userId;
-
-    if (!date || time_online === undefined || !mood) {
-      return res.status(400).json({
-        success: false,
-        error: "Data, horas e humor são obrigatórios",
-      });
-    }
-
-    const entry = await DiaryEntry.create({
-      user_id: userId,
-      date,
-      time_online: parseInt(time_online),
-      mood,
-      triggers: triggers || "",
-      activities: activities || [],
-    });
-
-    await checkAndUnlockAchievements(userId);
-
-    res.status(201).json({
-      success: true,
-      message: "Entrada salva com sucesso",
-      data: entry,
-    });
-  } catch (error) {
-    console.error("❌ Erro ao criar entrada:", error);
-    res.status(500).json({ success: false, error: "Erro ao salvar entrada" });
-  }
-});
-
-/**
- * ============================================================
- * DIÁRIO – Obter entradas do usuário
- * ============================================================
- */
-router.get("/diary-entries/:userId", authMiddleware, async (req, res) => {
-  try {
-    const { userId } = req.params;
-
-    const entries = await DiaryEntry.findAll({
-      where: { user_id: userId },
-      order: [["date", "DESC"]],
-      limit: 30,
-    });
-
-    res.json({ success: true, data: entries || [] });
-  } catch (error) {
-    console.error("❌ Erro ao buscar entradas do diário:", error);
-    res.status(500).json({ success: false, error: "Erro ao buscar entradas" });
-  }
-});
 
 /**
  * ============================================================
@@ -126,6 +66,7 @@ router.post("/user-achievements/check", authMiddleware, async (req, res) => {
 async function checkAndUnlockAchievements(userId) {
   try {
     const unlocked = [];
+    const DiaryEntry = require("../models/DiaryEntry"); // Adicione aqui
 
     const allAchievements = await Achievement.findAll();
 

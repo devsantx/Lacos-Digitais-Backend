@@ -96,11 +96,23 @@ if (sequelize) {
       await sequelize.authenticate();
       console.log("✅ Conexão com banco de dados estabelecida");
 
-      // Sincronizar modelos com segurança
-      await sequelize.sync({ alter: process.env.NODE_ENV === "development" });
-      console.log("✅ Tabelas sincronizadas");
+      // CORRIGIDO: Usar alter: false em produção para evitar erros com views
+      const shouldAlter =
+        process.env.NODE_ENV === "development" &&
+        process.env.ALLOW_ALTER === "true";
+
+      if (shouldAlter) {
+        console.log("⚠️  Modo ALTER ativado - use com cuidado!");
+        await sequelize.sync({ alter: true });
+        console.log("✅ Tabelas sincronizadas com ALTER");
+      } else {
+        // Apenas verificar se as tabelas existem, sem alterar
+        await sequelize.sync({ alter: false });
+        console.log("✅ Tabelas verificadas (sem alterações)");
+      }
     } catch (error) {
       console.error("❌ Erro ao sincronizar modelos:", error.message);
+      console.log("⚠️  Continuando sem sincronização automática...");
     }
   }, 2000);
 }

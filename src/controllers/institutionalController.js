@@ -1,10 +1,7 @@
-// src/controllers/institutionalController.js
-const pool = require("../config/pool"); // ← Importar o pool
+/// src/controllers/institutionalController.js
+const pool = require("../config/pool");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-
-// Para usar queries SQL com Sequelize
-const { QueryTypes } = require("sequelize");
 
 // ============================================================
 // AUTENTICAÇÃO
@@ -12,33 +9,48 @@ const { QueryTypes } = require("sequelize");
 
 // Login de Instituição
 exports.login = async (req, res) => {
+  const client = await pool.connect();
+
   try {
     const { matricula, senha } = req.body;
 
+    console.log("🔐 Tentativa de login institucional:", {
+      matricula,
+      senha: senha ? "***" : "missing",
+    });
+
     if (!matricula || !senha) {
+      console.warn("❌ Login falhou: Matrícula ou senha faltando");
       return res.status(400).json({
         success: false,
         error: "Matrícula e senha são obrigatórios",
       });
     }
 
-    // Buscar instituição usando Sequelize
-    const [institution] = await sequelize.query(
-      "SELECT * FROM institutions WHERE matricula = :matricula",
-      {
-        replacements: { matricula },
-        type: QueryTypes.SELECT,
-      }
+    // Buscar instituição usando pool do PostgreSQL
+    console.log(`🔍 Buscando instituição com matrícula: ${matricula}`);
+    const result = await client.query(
+      "SELECT * FROM institutions WHERE matricula = $1",
+      [matricula]
     );
 
+    const institution = result.rows[0];
+
     if (!institution) {
+      console.warn(`❌ Instituição não encontrada: ${matricula}`);
       return res.status(401).json({
         success: false,
         error: "Matrícula ou senha incorretos",
       });
     }
 
+    console.log(
+      `✅ Instituição encontrada: ${institution.nome} (ID: ${institution.id})`
+    );
+    console.log(`🔐 Verificando senha...`);
+
     if (!institution.ativo) {
+      console.warn(`⚠️  Instituição inativa: ${matricula}`);
       return res.status(401).json({
         success: false,
         error: "Instituição inativa",
@@ -49,6 +61,7 @@ exports.login = async (req, res) => {
     const senhaCorreta = await bcrypt.compare(senha, institution.senha);
 
     if (!senhaCorreta) {
+      console.warn(`❌ Senha incorreta para: ${matricula}`);
       return res.status(401).json({
         success: false,
         error: "Matrícula ou senha incorretos",
@@ -56,10 +69,17 @@ exports.login = async (req, res) => {
     }
 
     // Gerar token JWT
+    if (!process.env.JWT_SECRET) {
+      console.error("❌ JWT_SECRET não configurado no ambiente");
+      throw new Error("JWT_SECRET não configurado");
+    }
+
     const token = jwt.sign(
       {
         institutionId: institution.id,
         type: "institution",
+        nome: institution.nome,
+        matricula: institution.matricula,
       },
       process.env.JWT_SECRET,
       { expiresIn: "8h" }
@@ -68,6 +88,9 @@ exports.login = async (req, res) => {
     // Não retornar senha
     delete institution.senha;
 
+    console.log(`✅ Login bem-sucedido para: ${institution.nome}`);
+    console.log(`🔑 Token JWT gerado: ${token.substring(0, 20)}...`);
+
     res.json({
       success: true,
       message: "Login realizado com sucesso",
@@ -75,11 +98,17 @@ exports.login = async (req, res) => {
       institution,
     });
   } catch (error) {
-    console.error("Erro no login institucional:", error);
+    console.error("❌ Erro no login institucional:", error);
+    console.error("📋 Stack:", error.stack);
+
     res.status(500).json({
       success: false,
       error: "Erro ao fazer login",
+      details:
+        process.env.NODE_ENV === "development" ? error.message : undefined,
     });
+  } finally {
+    client.release();
   }
 };
 
@@ -93,7 +122,7 @@ exports.createArticle = async (req, res) => {
 
   try {
     const { title, authors, summary, category, url, keywords } = req.body;
-    const institutionId = req.institutionId; // Vem do middleware de auth
+    const institutionId = req.institutionId;
 
     // Validações
     if (!title || !authors || !summary || !category || !url) {
@@ -143,7 +172,7 @@ exports.getArticles = async (req, res) => {
 
   try {
     const institutionId = req.institutionId;
-    const { status } = req.query; // Filtro opcional por status
+    const { status } = req.query;
 
     let query = `
       SELECT * FROM institutional_articles
